@@ -39,9 +39,16 @@ app.post('/account', (req, res) => {
 
 });
 
-app.get('/account/statements', (req, res) => {
+app.get('/statement/:cpf', (req, res) => {
+  const { cpf } = req.params;
+
+  const account = accounts.find((account) => account.cpf === cpf);
   
-})
+  if (!account) return res.status(404).json({ error: "This account not exists!" });
+  
+  return res.status(200).json(account.statement);
+
+});
 
 app.listen(3333, 
   () => console.log('Server started at http://localhost:3333/')
