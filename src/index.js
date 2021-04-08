@@ -8,24 +8,39 @@ const accounts = [];
 // Garantindo que a API utilize JSON!
 app.use(express.json());
 
+
+/**
+ * Middleware 
+ */
+
+verifyIfAccountExistsByCpf = (request, response, next) => {
+  const { cpf } = request.headers;
+
+  
+  const accountExists = accounts.find((account) => account.cpf === cpf);
+
+  // Informs that the CPF already exists
+  if (!accountExists) return response.status(400).json({ error : "Account not found" });
+
+  request.account = accountExists;
+
+  return next();
+}
+
 /**
  * CPF: String
  * Name: String
  * ID: uuid
  * Statement (Extrato): Array 
  */
-app.post('/account', (req, res) => {
-  const { cpf, name } = req.body;
+app.post('/account', (request, response) => {
+  const { name } = request.body;
+  const { cpf } = request.headers;
   const id = uuidv4();
 
-  // Verify if the CPF already exists on accounts
-  const cpfExists = accounts.some(
-    (account) => account.cpf === cpf
-  );
+  const accountExists = accounts.some((account) => account.cpf === cpf);
 
-  // Informs that the CPF already exists
-  if (cpfExists) return res.status(400).json({ error: 'CPF already exists.' });
-
+  if (accountExists) return response.status(400).json({ error: "Account already exists" });
 
   // Register a new account
   accounts.push({
@@ -35,20 +50,34 @@ app.post('/account', (req, res) => {
     statement: []
   });
 
-  return res.status(201).send();
-
+  return response.status(201).send();
 });
 
-app.get('/statement/:cpf', (req, res) => {
-  const { cpf } = req.params;
+app.use(verifyIfAccountExistsByCpf);
 
-  const account = accounts.find((account) => account.cpf === cpf);
+app.get('/statement/', (request, response) => {
+  const { account } = request;
   
-  if (!account) return res.status(404).json({ error: "This account not exists!" });
-  
-  return res.status(200).json(account.statement);
-
+  return response.status(200).json(account.statement);
 });
+
+app.post('/statement/deposit', (request, response) => {
+  const { account } = request;
+  const { amount, description } = request.body;
+
+  const statementOperation = {
+    description, 
+    amount, 
+    created_at: new Date(), 
+    type: "credit"
+  };
+
+  account.statement.push(statementOperation);
+
+  return response.status(201).send();
+})
+
+
 
 app.listen(3333, 
   () => console.log('Server started at http://localhost:3333/')
